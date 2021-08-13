@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script
+      type="module"
+      src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"
+    ></script>
+    <script
+      nomodule
+      src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"
+    ></script>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://unpkg.com/vue@next"></script>
+  </head>
+  <body>
+    <div id="app">
+      <form class="form" @submit.prevent="add">
+        <input type="text" v-model="name" autofocus />
+        <div><button type="submit">Add</button></div>
+      </form>
+      <div class="message" v-if="error">{{error}}</div>
+      <div class="message" v-if="loading && !error">Loading...</div>
+      <template v-else-if="!loading && !error">
+        <ul v-if="tasks.length" class="list">
+          <list-item
+            v-for="task in tasks"
+            :task="task"
+            @remove="remove(task)"
+            @update="update(task)"
+            @complete="complete(task)"
+            @activate="activate(task)"
+          ></list-item>
+        </ul>
+        <div class="message" v-else>Nothing todo 😜</div>
+      </template>
+    </div>
+  </body>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="List-item.js"></script>
+  <script type="module">
+    const App = {
+      data() {
+        return {
+          tasks: [],
+          name: "",
+          baseUrl: "http://localhost:8080/api/v1/tasks",
+          loading: true,
+          error: "",
+        };
+      },
+
+      methods: {
+        findByIndex(id) {
+          return this.tasks.findIndex((task) => task.id == id);
+        },
+
+        async add() {
+          const res = await axios.post(this.baseUrl, {
+            name: this.name,
+          });
+          this.tasks.push(res.data);
+          this.name = "";
+        },
+
+        async remove(task) {
+          const res = await axios.delete(task._links.self.href);
+
+          const index = this.findByIndex(task.id);
+          this.tasks.splice(index, 1);
+        },
+
+        async update(task) {
+          await axios.put(task._links.self.href, {
+            name: task.name,
+          });
+        },
+
+        async complete(task) {
+          const res = await axios.put(task._links.complete.href);
+
+          const index = this.findByIndex(task.id);
+          this.tasks[index] = res.data;
+        },
+
+        async activate(task) {
+          const res = await axios.put(task._links.activate.href);
+
+          const index = this.findByIndex(task.id);
+          this.tasks[index] = res.data;
+        },
+      },
+
+      async mounted() {
+        try {
+          const res = await axios.get(this.baseUrl);
+          this.loading = false;
+          if (res.data._embedded) this.tasks = res.data._embedded.taskList;
+        } catch (error) {
+          // Error 😨
+          if (error.response) {
+            /*
+             * The request was made and the server responded with a
+             * status code that falls out of the range of 2xx
+             */
+            console.log(error.response.data);
+            console.log(error.response.status);
+            console.log(error.response.headers);
+          } else if (error.request) {
+            /*
+             * The request was made but no response was received, `error.request`
+             * is an instance of XMLHttpRequest in the browser and an instance
+             * of http.ClientRequest in Node.js
+             */
+            console.log(error.request);
+          } else {
+            // Something happened in setting up the request and triggered an Error
+            console.log("Error", error.message);
+          }
+          console.log(error.message);
+          this.error = error.message;
+        }
+      },
+    };
+
+    const app = Vue.createApp(App);
+    app.component("list-item", ListItem);
+    app.mount("#app");
+  </script>
+  <script></script>
+</html>
