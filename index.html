@@ -22,9 +22,9 @@
         <input type="text" v-model="name" autofocus />
         <div><button type="submit">Add</button></div>
       </form>
-      <div class="message" v-if="error">{{error}}</div>
-      <div class="message" v-if="loading && !error">Loading...</div>
-      <template v-else-if="!loading && !error">
+      <div class="message" v-if="error">{{error.value}}</div>
+      <div class="message" v-if="loading.value && !error">Loading...</div>
+      <template v-else-if="!loading.value && !error">
         <ul v-if="tasks.length" class="list">
           <list-item
             v-for="task in tasks"
@@ -42,15 +42,33 @@
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
   <script src="List-item.js"></script>
   <script type="module">
+    const { createApp, ref, computed, watch, onMounted } = Vue;
     const App = {
       data() {
         return {
-          tasks: [],
           name: "",
-          baseUrl: "http://localhost:8080/api/v1/tasks",
-          loading: true,
-          error: "",
         };
+      },
+
+      setup(props) {
+        const tasks = ref([]);
+        const baseUrl = ref("http://localhost:8080/api/v1/tasks");
+        const loading = ref(true);
+        let error = ref("");
+
+        const getTask = async () => {
+          try {
+            const res = await axios.get(baseUrl.value);
+            loading.value = false;
+            if (res.data._embedded) tasks.value = res.data._embedded.taskList;
+          } catch (err) {
+            error.value = err.message;
+          }
+        };
+
+        onMounted(getTask);
+
+        return { tasks, baseUrl, loading, getTask, error };
       },
 
       methods: {
@@ -92,37 +110,6 @@
           const index = this.findByIndex(task.id);
           this.tasks[index] = res.data;
         },
-      },
-
-      async mounted() {
-        try {
-          const res = await axios.get(this.baseUrl);
-          this.loading = false;
-          if (res.data._embedded) this.tasks = res.data._embedded.taskList;
-        } catch (error) {
-          // Error 😨
-          if (error.response) {
-            /*
-             * The request was made and the server responded with a
-             * status code that falls out of the range of 2xx
-             */
-            console.log(error.response.data);
-            console.log(error.response.status);
-            console.log(error.response.headers);
-          } else if (error.request) {
-            /*
-             * The request was made but no response was received, `error.request`
-             * is an instance of XMLHttpRequest in the browser and an instance
-             * of http.ClientRequest in Node.js
-             */
-            console.log(error.request);
-          } else {
-            // Something happened in setting up the request and triggered an Error
-            console.log("Error", error.message);
-          }
-          console.log(error.message);
-          this.error = error.message;
-        }
       },
     };
 
