@@ -14,7 +14,7 @@
       src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"
     ></script>
     <link rel="stylesheet" href="style.css" />
-    <script src="https://unpkg.com/vue@next"></script>
+    <script src="https://unpkg.com/vue@3.1.1/dist/vue.global.prod.js"></script>
   </head>
   <body>
     <div id="app">
@@ -22,9 +22,9 @@
         <input type="text" v-model="name" autofocus />
         <div><button type="submit">Add</button></div>
       </form>
-      <div class="message" v-if="error">{{error.value}}</div>
-      <div class="message" v-if="loading.value && !error">Loading...</div>
-      <template v-else-if="!loading.value && !error">
+      <div class="message" v-if="error">{{error}}</div>
+      <div class="message" v-if="loading && !error">Loading...</div>
+      <template v-else-if="!loading && !error">
         <ul v-if="tasks.length" class="list">
           <list-item
             v-for="task in tasks"
@@ -44,19 +44,16 @@
   <script type="module">
     const { createApp, ref, computed, watch, onMounted } = Vue;
     const App = {
-      data() {
-        return {
-          name: "",
-        };
-      },
-
       setup(props) {
         const tasks = ref([]);
-        const baseUrl = ref("http://localhost:8080/api/v1/tasks");
+        const baseUrl = ref(
+          "https://evening-ridge-86661.herokuapp.com/api/v1/tasks"
+        );
         const loading = ref(true);
-        let error = ref("");
+        const error = ref("");
+        const name = ref("");
 
-        const getTask = async () => {
+        const getTasks = async () => {
           try {
             const res = await axios.get(baseUrl.value);
             loading.value = false;
@@ -66,22 +63,22 @@
           }
         };
 
-        onMounted(getTask);
+        const add = async () => {
+          const res = await axios.post(baseUrl.value, {
+            name: name.value,
+          });
+          tasks.value.push(res.data);
+          name.value = "";
+        };
 
-        return { tasks, baseUrl, loading, getTask, error };
+        onMounted(getTasks);
+
+        return { tasks, baseUrl, loading, getTasks, error, add, name };
       },
 
       methods: {
         findByIndex(id) {
           return this.tasks.findIndex((task) => task.id == id);
-        },
-
-        async add() {
-          const res = await axios.post(this.baseUrl, {
-            name: this.name,
-          });
-          this.tasks.push(res.data);
-          this.name = "";
         },
 
         async remove(task) {
